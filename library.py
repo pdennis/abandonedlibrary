@@ -11,7 +11,6 @@ import webview
 from dataclasses import dataclass
 import threading
 import multiprocessing
-
 import numpy as np
 
 class GoogleBooksAPI:
@@ -182,27 +181,38 @@ class Game:
     import threading
 
     def handle_bookshelf_click(self):
-        """Handle click on bookshelf - open random book in a separate process."""
+        """Handle click on bookshelf - show reader images, open random book, and wait for webview to close."""
         self.loading = True
         self.loading_start_time = pygame.time.get_ticks()
+        
+        # Step 1: Display 'images/reader.jpg' for 2 seconds
+        reader_img1 = pygame.image.load('images/reader.jpg')
+        reader_img1 = pygame.transform.scale(reader_img1, self.screen_size)
+        self.screen.blit(reader_img1, (0, 0))
+        pygame.display.flip()
+        pygame.time.wait(2000)  # Wait for 2 seconds
 
+        # Step 2: Display 'images/reader2.jpg' for 2 seconds
+        reader_img2 = pygame.image.load('images/reader2.jpg')
+        reader_img2 = pygame.transform.scale(reader_img2, self.screen_size)
+        self.screen.blit(reader_img2, (0, 0))
+        pygame.display.flip()
+        pygame.time.wait(2000)  # Wait for 2 seconds
+
+        # Step 3: Open the random book in a webview window
         book = self.books_api.get_random_book()
         if book and book['preview_link']:
-            # Start webview in a separate process
             webview_process = multiprocessing.Process(
                 target=open_webview, args=(book['preview_link'], book['title'])
             )
             webview_process.start()
+            
+            # Step 4: Wait for the webview window to close
+            webview_process.join()  # Wait until the process is complete
 
-        # Keep loading message visible briefly even if book loads quickly
-        while pygame.time.get_ticks() - self.loading_start_time < 1000:
-            self.screen.fill((0, 0, 0))
-            loading_text = self.font.render('Opening book preview...', True, (255, 255, 255))
-            text_rect = loading_text.get_rect(center=(self.screen_size[0] / 2, self.screen_size[1] / 2))
-            self.screen.blit(loading_text, text_rect)
-            pygame.display.flip()
-
+        # Step 5: Reset to the previous screen
         self.loading = False
+
 
 
 
