@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import threading
 import multiprocessing
 
+import numpy as np
+
 class GoogleBooksAPI:
     def __init__(self, api_key: Optional[str] = None):
         """Initialize with API key from parameter or environment variable."""
@@ -21,7 +23,7 @@ class GoogleBooksAPI:
                 "API key is required. Either pass it to GoogleBooksAPI() or "
                 "set the GOOGLE_BOOKS_API_KEY environment variable."
             )
-        
+
     def get_random_word(self) -> str:
         """Returns a random single letter or two-letter combination to use as a search term."""
         letters = string.ascii_lowercase
@@ -30,9 +32,16 @@ class GoogleBooksAPI:
         return random.choice(letters) + random.choice(letters)
 
     def get_random_year(self) -> int:
-        """Returns a random year between 1800 and current year."""
+        """Returns a weighted random year between 1800 and current year."""
+        start_year = 1800
         current_year = datetime.datetime.now().year
-        return random.randint(1800, current_year)
+        years = np.arange(start_year, current_year + 1)
+
+        # Example weighting scheme: exponential growth towards recent years
+        weights = np.exp(0.01 * (years - start_year))
+        weights /= weights.sum()  # Normalize to make it a probability distribution
+
+        return np.random.choice(years, p=weights)
 
     def get_random_book(self) -> Optional[Dict[str, Any]]:
         """Queries Google Books API with random parameters and returns a random book."""
@@ -71,6 +80,7 @@ class GoogleBooksAPI:
         except requests.RequestException as e:
             print(f"Error accessing Google Books API: {e}")
             return None
+
 
 class Direction(Enum):
     NORTH = 0
