@@ -26,7 +26,7 @@ A tiny, spooky point-and-click adventure game where you explore an abandoned lib
 
 1. Clone the repository:
 ```bash
-git clone [your-repo-url]
+git clone https://github.com/pdennis/abandonedlibrary
 cd haunted-library
 ```
 
