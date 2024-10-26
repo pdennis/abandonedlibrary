@@ -163,7 +163,7 @@ class Game:
                 pygame.draw.polygon(self.screen, (0, 0, 0), points)
 
     def handle_bookshelf_click(self):
-        """Handle click on bookshelf - fetch and open random book in standalone window."""
+        """Handle click on bookshelf - open random book directly in a webview window."""
         self.loading = True
         self.loading_start_time = pygame.time.get_ticks()
 
@@ -174,7 +174,7 @@ class Game:
                 book['preview_link'],
                 width=800,
                 height=600,
-                frameless=True,
+                frameless=False,
                 resizable=True
             )
             webview.start()
@@ -188,6 +188,8 @@ class Game:
             pygame.display.flip()
 
         self.loading = False
+
+
 
     def run(self):
         """Main game loop."""
