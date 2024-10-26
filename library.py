@@ -13,6 +13,14 @@ import threading
 import multiprocessing
 import numpy as np
 
+import os
+import random
+import string
+import datetime
+import numpy as np
+import requests
+from typing import Optional, Dict, Any
+
 class GoogleBooksAPI:
     def __init__(self, api_key: Optional[str] = None):
         """Initialize with API key from parameter or environment variable."""
@@ -22,6 +30,7 @@ class GoogleBooksAPI:
                 "API key is required. Either pass it to GoogleBooksAPI() or "
                 "set the GOOGLE_BOOKS_API_KEY environment variable."
             )
+        self.base_url = "https://www.googleapis.com/books/v1/volumes"
 
     def get_random_word(self) -> str:
         """Returns a random single letter or two-letter combination to use as a search term."""
@@ -35,32 +44,31 @@ class GoogleBooksAPI:
         start_year = 1800
         current_year = datetime.datetime.now().year
         years = np.arange(start_year, current_year + 1)
-
         # Example weighting scheme: exponential growth towards recent years
         weights = np.exp(0.01 * (years - start_year))
         weights /= weights.sum()  # Normalize to make it a probability distribution
-
         return np.random.choice(years, p=weights)
 
     def get_random_book(self) -> Optional[Dict[str, Any]]:
         """Queries Google Books API with random parameters and returns a random book."""
-        base_url = "https://www.googleapis.com/books/v1/volumes"
-        
         # Generate random search parameters
         search_term = self.get_random_word()
         year = self.get_random_year()
         
-        # Parameters for the API request
+        # Use the proper API query syntax for date filtering
+        # The format "subject:fiction+publishedDate:1999" works with the API
         params = {
-            'q': f'{search_term}+year:{year}',
+            'q': f'{search_term}+publishedDate:{year}',
             'maxResults': 40,
             'langRestrict': 'en',
             'printType': 'books',
-            'key': self.api_key
+            'key': self.api_key,
+            # Optional: you can also use the orderBy parameter
+            'orderBy': 'relevance'
         }
         
         try:
-            response = requests.get(base_url, params=params)
+            response = requests.get(self.base_url, params=params)
             response.raise_for_status()
             data = response.json()
             
@@ -71,7 +79,10 @@ class GoogleBooksAPI:
                     if info.get('previewLink'):
                         return {
                             'title': info.get('title', 'Unknown Title'),
-                            'preview_link': info.get('previewLink', '')
+                            'authors': info.get('authors', []),
+                            'published_date': info.get('publishedDate', ''),
+                            'preview_link': info.get('previewLink', ''),
+                            'description': info.get('description', '')
                         }
                 return None
             return None
@@ -79,7 +90,6 @@ class GoogleBooksAPI:
         except requests.RequestException as e:
             print(f"Error accessing Google Books API: {e}")
             return None
-
 
 class Direction(Enum):
     NORTH = 0
@@ -108,7 +118,7 @@ class Game:
         pygame.init()
         self.screen_size = (screen_width, screen_height)
         self.screen = pygame.display.set_mode(self.screen_size)
-        pygame.display.set_caption("Library Adventure")
+        pygame.display.set_caption("Where is everybody? Hello?")
         
         # Initialize Google Books API
         self.books_api = GoogleBooksAPI()
