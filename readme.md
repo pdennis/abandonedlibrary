@@ -3,6 +3,7 @@
 A tiny, spooky point-and-click adventure game where you explore an abandoned library. Each dusty tome you discover opens a random real book from Google Books. But beware... you're not entirely alone in these halls.
 
 ![the library](images/scene8.jpg)
+![the library](images/scene7.jpg)
 
 ## 🎮 Features
 
