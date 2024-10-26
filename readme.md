@@ -51,7 +51,7 @@ pip install -r requirements.txt
 
 1. Run the game:
 ```bash
-python game.py
+python library.py
 ```
 
 2. Navigation:
