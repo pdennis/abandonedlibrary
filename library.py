@@ -9,6 +9,8 @@ import datetime
 import os
 import webview
 from dataclasses import dataclass
+import threading
+import multiprocessing
 
 class GoogleBooksAPI:
     def __init__(self, api_key: Optional[str] = None):
@@ -87,6 +89,11 @@ class Location:
         img = pygame.image.load(self.image_path)
         self.image = pygame.transform.scale(img, screen_size)
 
+def open_webview(url, title):
+    """Open a webview window with the given URL and title."""
+    webview.create_window(title, url, width=800, height=600, resizable=True)
+    webview.start()
+
 class Game:
     def __init__(self, screen_width: int = 800, screen_height: int = 600):
         pygame.init()
@@ -162,22 +169,20 @@ class Game:
                     points = [(rect.right, rect.centery), (rect.left, rect.top), (rect.left, rect.bottom)]
                 pygame.draw.polygon(self.screen, (0, 0, 0), points)
 
+    import threading
+
     def handle_bookshelf_click(self):
-        """Handle click on bookshelf - open random book directly in a webview window."""
+        """Handle click on bookshelf - open random book in a separate process."""
         self.loading = True
         self.loading_start_time = pygame.time.get_ticks()
 
         book = self.books_api.get_random_book()
         if book and book['preview_link']:
-            webview.create_window(
-                book['title'],
-                book['preview_link'],
-                width=800,
-                height=600,
-                frameless=False,
-                resizable=True
+            # Start webview in a separate process
+            webview_process = multiprocessing.Process(
+                target=open_webview, args=(book['preview_link'], book['title'])
             )
-            webview.start()
+            webview_process.start()
 
         # Keep loading message visible briefly even if book loads quickly
         while pygame.time.get_ticks() - self.loading_start_time < 1000:
@@ -188,6 +193,7 @@ class Game:
             pygame.display.flip()
 
         self.loading = False
+
 
 
 
