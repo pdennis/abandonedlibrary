@@ -49,21 +49,27 @@ class GoogleBooksAPI:
         weights /= weights.sum()  # Normalize to make it a probability distribution
         return np.random.choice(years, p=weights)
 
-    def get_random_book(self) -> Optional[Dict[str, Any]]:
-        """Queries Google Books API with random parameters and returns a random book."""
+    def get_random_book(self, preview_type: str = 'partial') -> Optional[Dict[str, Any]]:
+        """
+        Queries Google Books API with random parameters and returns a random book.
+        
+        Args:
+            preview_type (str): Type of preview to filter for. 
+                              'partial' for books with preview available
+                              'free-ebooks' for completely free books
+        """
         # Generate random search parameters
         search_term = self.get_random_word()
         year = self.get_random_year()
         
         # Use the proper API query syntax for date filtering
-        # The format "subject:fiction+publishedDate:1999" works with the API
         params = {
             'q': f'{search_term}+publishedDate:{year}',
             'maxResults': 40,
             'langRestrict': 'en',
             'printType': 'books',
+            'filter': preview_type,  # This ensures we only get books with previews
             'key': self.api_key,
-            # Optional: you can also use the orderBy parameter
             'orderBy': 'relevance'
         }
         
@@ -76,13 +82,17 @@ class GoogleBooksAPI:
                 random.shuffle(data['items'])
                 for book in data['items']:
                     info = book.get('volumeInfo', {})
+                    # Double-check that we have a preview link
                     if info.get('previewLink'):
                         return {
                             'title': info.get('title', 'Unknown Title'),
                             'authors': info.get('authors', []),
                             'published_date': info.get('publishedDate', ''),
                             'preview_link': info.get('previewLink', ''),
-                            'description': info.get('description', '')
+                            'description': info.get('description', ''),
+                            'preview_availability': info.get('accessInfo', {}).get('viewability', ''),
+                            'page_count': info.get('pageCount', None),
+                            'categories': info.get('categories', [])
                         }
                 return None
             return None
@@ -90,6 +100,20 @@ class GoogleBooksAPI:
         except requests.RequestException as e:
             print(f"Error accessing Google Books API: {e}")
             return None
+
+    def get_random_book_with_retries(self, max_retries: int = 3, preview_type: str = 'partial') -> Optional[Dict[str, Any]]:
+        """
+        Attempts to get a random book multiple times if initial attempts fail.
+        
+        Args:
+            max_retries (int): Maximum number of attempts to find a book
+            preview_type (str): Type of preview to filter for
+        """
+        for _ in range(max_retries):
+            result = self.get_random_book(preview_type)
+            if result is not None:
+                return result
+        return None
 
 class Direction(Enum):
     NORTH = 0
@@ -110,7 +134,7 @@ class Location:
 
 def open_webview(url, title):
     """Open a webview window with the given URL and title."""
-    webview.create_window(title, url, width=800, height=600, resizable=True)
+    webview.create_window(title, url, width=1000, height=1200, resizable=True)
     webview.start()
 
 class Game:
