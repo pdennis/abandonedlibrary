@@ -12,13 +12,6 @@ from dataclasses import dataclass
 import threading
 import multiprocessing
 import numpy as np
-import os
-import random
-import string
-import datetime
-import numpy as np
-import requests
-from typing import Optional, Dict, Any
 
 class GoogleBooksAPI:
     def __init__(self, api_key: Optional[str] = None):
@@ -43,45 +36,31 @@ class GoogleBooksAPI:
         start_year = 1800
         current_year = datetime.datetime.now().year
         years = np.arange(start_year, current_year + 1)
-        # Example weighting scheme: exponential growth towards recent years
         weights = np.exp(0.01 * (years - start_year))
         weights /= weights.sum()  # Normalize to make it a probability distribution
         return np.random.choice(years, p=weights)
 
     def get_random_book(self, preview_type: str = 'partial') -> Optional[Dict[str, Any]]:
-        """
-        Queries Google Books API with random parameters and returns a random book.
-        
-        Args:
-            preview_type (str): Type of preview to filter for. 
-                              'partial' for books with preview available
-                              'free-ebooks' for completely free books
-        """
-        # Generate random search parameters
+        """Queries Google Books API with random parameters and returns a random book."""
         search_term = self.get_random_word()
         year = self.get_random_year()
-        
-        # Use the proper API query syntax for date filtering
         params = {
             'q': f'{search_term}+publishedDate:{year}',
             'maxResults': 40,
             'langRestrict': 'en',
             'printType': 'books',
-            'filter': preview_type,  # This ensures we only get books with previews
+            'filter': preview_type,
             'key': self.api_key,
             'orderBy': 'relevance'
         }
-        
         try:
             response = requests.get(self.base_url, params=params)
             response.raise_for_status()
             data = response.json()
-            
             if data.get('totalItems', 0) > 0 and 'items' in data:
                 random.shuffle(data['items'])
                 for book in data['items']:
                     info = book.get('volumeInfo', {})
-                    # Double-check that we have a preview link
                     if info.get('previewLink'):
                         return {
                             'title': info.get('title', 'Unknown Title'),
@@ -93,21 +72,13 @@ class GoogleBooksAPI:
                             'page_count': info.get('pageCount', None),
                             'categories': info.get('categories', [])
                         }
-                return None
             return None
-            
         except requests.RequestException as e:
             print(f"Error accessing Google Books API: {e}")
             return None
 
     def get_random_book_with_retries(self, max_retries: int = 3, preview_type: str = 'partial') -> Optional[Dict[str, Any]]:
-        """
-        Attempts to get a random book multiple times if initial attempts fail.
-        
-        Args:
-            max_retries (int): Maximum number of attempts to find a book
-            preview_type (str): Type of preview to filter for
-        """
+        """Attempts to get a random book multiple times if initial attempts fail."""
         for _ in range(max_retries):
             result = self.get_random_book(preview_type)
             if result is not None:
@@ -137,6 +108,29 @@ def open_webview(url, title):
     webview.start()
 
 class Game:
+    def door6_action(self, event=None):
+        """Flickers the 'images/closet.jpg' image for 1 second."""
+        # Load the image
+        closet_img = pygame.image.load('images/closet.jpg')
+        closet_img = pygame.transform.scale(closet_img, self.screen_size)
+
+        # Set the flicker duration and start time
+        flicker_duration = 1000  # 1 second in milliseconds
+        start_time = pygame.time.get_ticks()
+        flicker_interval = 100  # 100 ms per flicker (adjust for faster/slower flicker)
+
+        # Flicker loop
+        while pygame.time.get_ticks() - start_time < flicker_duration:
+            # Determine whether to display the image or a black screen
+            elapsed_time = pygame.time.get_ticks() - start_time
+            if (elapsed_time // flicker_interval) % 2 == 0:
+                self.screen.blit(closet_img, (0, 0))
+            else:
+                self.screen.fill((0, 0, 0))
+
+            pygame.display.flip()
+            pygame.time.delay(50)  # Short delay to control flicker speed
+
     def __init__(self, screen_width: int = 800, screen_height: int = 600):
         pygame.init()
         self.screen_size = (screen_width, screen_height)
@@ -145,6 +139,13 @@ class Game:
         
         # Initialize Google Books API
         self.books_api = GoogleBooksAPI()
+        
+        # Initialize mixer for background music
+        pygame.mixer.init()
+
+        # Load and play background music
+        pygame.mixer.music.load('./audio/horror.mp3')  # Replace with the actual path to your MP3 file
+        pygame.mixer.music.play(-1)  # -1 makes the music loop indefinitely
         
         # Loading message font
         self.font = pygame.font.SysFont('Arial', 24)
@@ -211,8 +212,6 @@ class Game:
                     points = [(rect.right, rect.centery), (rect.left, rect.top), (rect.left, rect.bottom)]
                 pygame.draw.polygon(self.screen, (0, 0, 0), points)
 
-    import threading
-
     def handle_bookshelf_click(self):
         """Handle click on bookshelf - show reader images, open random book, and wait for webview to close."""
         self.loading = True
@@ -239,16 +238,10 @@ class Game:
                 target=open_webview, args=(book['preview_link'], book['title'])
             )
             webview_process.start()
-            
-            # Step 4: Wait for the webview window to close
             webview_process.join()  # Wait until the process is complete
 
         # Step 5: Reset to the previous screen
         self.loading = False
-
-
-
-
 
     def run(self):
         """Main game loop."""
@@ -291,8 +284,38 @@ class Game:
         pygame.quit()
         sys.exit()
 
+def bookfloor_action(game):
+    """Plays a scream sound and rapidly alternates between two images for 1 second."""
+    # Load the images
+    img1 = pygame.image.load('images/1.jpg')
+    img1 = pygame.transform.scale(img1, game.screen_size)
+    img2 = pygame.image.load('images/2.jpg')
+    img2 = pygame.transform.scale(img2, game.screen_size)
+
+    # Load and play the scream audio
+    pygame.mixer.Sound('./audio/scream.mp3').play()
+
+    # Set the flicker duration and start time
+    flicker_duration = 1000  # 1 second in milliseconds
+    start_time = pygame.time.get_ticks()
+    flicker_interval = 100  # Adjust interval for faster flicker (100 ms)
+
+    # Flicker loop
+    while pygame.time.get_ticks() - start_time < flicker_duration:
+        elapsed_time = pygame.time.get_ticks() - start_time
+        # Alternate between img1 and img2
+        if (elapsed_time // flicker_interval) % 2 == 0:
+            game.screen.blit(img1, (0, 0))
+        else:
+            game.screen.blit(img2, (0, 0))
+
+        pygame.display.flip()
+        pygame.time.delay(50)  # Short delay to control flicker speed
+
+
+
 def main():
-    game = Game(1200, 800)
+    game = Game(1200, 1200)
     
     def bookshelf_action():
         game.handle_bookshelf_click()
@@ -302,8 +325,8 @@ def main():
         "images/scene1.jpg",
         [Direction.EAST, Direction.SOUTH],
         {
-            "bookshelf1": (pygame.Rect(6, 164, 250, 250), bookshelf_action),
-            "bookshelf2": (pygame.Rect(205, 193, 400, 250), bookshelf_action)
+            "bookshelf1": (pygame.Rect(6, 236, 992, 350), bookshelf_action),
+            "bookshelf2": (pygame.Rect(586, 472, 400, 500), bookshelf_action)
         }
     )
     
@@ -311,13 +334,15 @@ def main():
         "images/scene2.jpg",
         [Direction.WEST, Direction.EAST, Direction.SOUTH],
         {
-            "bookshelf": (pygame.Rect(350, 200, 100, 200), bookshelf_action)
+            "bookshelf3": (pygame.Rect(6, 670, 400, 400), bookshelf_action),
+            "bookshelf4": (pygame.Rect(764, 670, 400, 400), bookshelf_action)
+
         }
     )
     
     location3 = Location(
         "images/scene3.jpg",
-        [Direction.WEST, Direction.SOUTH],
+        [Direction.WEST],
         {}
     )
     
@@ -335,8 +360,16 @@ def main():
     
     location6 = Location(
         "images/scene6.jpg",
-        [Direction.NORTH, Direction.WEST, Direction.SOUTH],
-        {}
+        [Direction.WEST, Direction.SOUTH],
+        {
+
+            "bookshelf5": (pygame.Rect(6, 6, 1000, 500), bookshelf_action),
+            "bookshelf6": (pygame.Rect(764, 670, 400, 400), bookshelf_action),
+            "door1": (pygame.Rect(522, 508, 400, 400), game.door6_action)
+
+
+        
+        }
     )
     
     location7 = Location(
@@ -348,13 +381,26 @@ def main():
     location8 = Location(
         "images/scene8.jpg",
         [Direction.NORTH, Direction.EAST, Direction.WEST],
-        {}
+        {
+
+
+        }
     )
     
     location9 = Location(
         "images/scene9.jpg",
         [Direction.NORTH, Direction.WEST],
-        {}
+        {
+
+
+             "bookshelf7": (pygame.Rect(50, 300, 500, 500), bookshelf_action),
+            "bookshelf8": (pygame.Rect(764, 670, 400, 400), bookshelf_action),
+           "bookfloor": (pygame.Rect(350, 850, 300, 300), lambda: bookfloor_action(game))
+
+
+
+        }        
+        
     )
     
     game.add_location((0, 0), library_location)
