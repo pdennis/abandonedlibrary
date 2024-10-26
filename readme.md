@@ -1,4 +1,4 @@
-# 🏚️ Haunted Library Explorer
+# Abandoned Library Explorer
 
 A tiny, spooky point-and-click adventure game where you explore an abandoned library. Each dusty tome you discover opens a random real book from Google Books. But beware... you're not entirely alone in these halls.
 
