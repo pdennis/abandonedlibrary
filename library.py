@@ -7,7 +7,7 @@ import random
 import string
 import datetime
 import os
-import webbrowser
+import webview
 from dataclasses import dataclass
 
 class GoogleBooksAPI:
@@ -55,11 +55,10 @@ class GoogleBooksAPI:
             data = response.json()
             
             if data.get('totalItems', 0) > 0 and 'items' in data:
-                # Keep trying until we find a book with a preview
                 random.shuffle(data['items'])
                 for book in data['items']:
                     info = book.get('volumeInfo', {})
-                    if info.get('previewLink'):  # Only return books with preview links
+                    if info.get('previewLink'):
                         return {
                             'title': info.get('title', 'Unknown Title'),
                             'preview_link': info.get('previewLink', '')
@@ -117,13 +116,13 @@ class Game:
         self.locations: Dict[Tuple[int, int], Location] = {}
 
     def add_location(self, grid_pos: Tuple[int, int], location: Location):
-        """Add a new location to the game grid"""
+        """Add a new location to the game grid."""
         if 0 <= grid_pos[0] < 3 and 0 <= grid_pos[1] < 3:
             self.locations[grid_pos] = location
             location.load_image(self.screen_size)
 
     def can_move(self, direction: Direction) -> bool:
-        """Check if movement in given direction is allowed"""
+        """Check if movement in given direction is allowed."""
         current_location = self.locations.get(self.current_pos)
         if not current_location:
             return False
@@ -135,7 +134,7 @@ class Game:
         return new_pos in self.locations
 
     def get_new_position(self, direction: Direction) -> Tuple[int, int]:
-        """Calculate new position after moving in given direction"""
+        """Calculate new position after moving in given direction."""
         x, y = self.current_pos
         if direction == Direction.NORTH:
             return (x, y - 1)
@@ -148,11 +147,10 @@ class Game:
         return self.current_pos
 
     def draw_arrows(self):
-        """Draw navigation arrows for allowed directions"""
+        """Draw navigation arrows for allowed directions."""
         for direction, rect in self.arrows.items():
             if self.can_move(direction):
                 pygame.draw.rect(self.screen, (255, 255, 255), rect)
-                # Draw arrow shape based on direction
                 points = []
                 if direction == Direction.NORTH:
                     points = [(rect.centerx, rect.top), (rect.left, rect.bottom), (rect.right, rect.bottom)]
@@ -165,26 +163,34 @@ class Game:
                 pygame.draw.polygon(self.screen, (0, 0, 0), points)
 
     def handle_bookshelf_click(self):
-        """Handle click on bookshelf - fetch and open random book in browser"""
+        """Handle click on bookshelf - fetch and open random book in standalone window."""
         self.loading = True
         self.loading_start_time = pygame.time.get_ticks()
-        
+
         book = self.books_api.get_random_book()
         if book and book['preview_link']:
-            webbrowser.open(book['preview_link'])
-            
+            webview.create_window(
+                book['title'],
+                book['preview_link'],
+                width=800,
+                height=600,
+                frameless=True,
+                resizable=True
+            )
+            webview.start()
+
         # Keep loading message visible briefly even if book loads quickly
         while pygame.time.get_ticks() - self.loading_start_time < 1000:
             self.screen.fill((0, 0, 0))
             loading_text = self.font.render('Opening book preview...', True, (255, 255, 255))
-            text_rect = loading_text.get_rect(center=(self.screen_size[0]/2, self.screen_size[1]/2))
+            text_rect = loading_text.get_rect(center=(self.screen_size[0] / 2, self.screen_size[1] / 2))
             self.screen.blit(loading_text, text_rect)
             pygame.display.flip()
-            
+
         self.loading = False
 
     def run(self):
-        """Main game loop"""
+        """Main game loop."""
         running = True
         while running:
             current_location = self.locations.get(self.current_pos)
@@ -216,7 +222,7 @@ class Game:
             if self.loading:
                 self.screen.fill((0, 0, 0))
                 loading_text = self.font.render('Opening book preview...', True, (255, 255, 255))
-                text_rect = loading_text.get_rect(center=(self.screen_size[0]/2, self.screen_size[1]/2))
+                text_rect = loading_text.get_rect(center=(self.screen_size[0] / 2, self.screen_size[1] / 2))
                 self.screen.blit(loading_text, text_rect)
             
             pygame.display.flip()
@@ -227,35 +233,33 @@ class Game:
 def main():
     game = Game(800, 600)
     
-    # Define the bookshelf click action
     def bookshelf_action():
         game.handle_bookshelf_click()
     
     # Create a location with a bookshelf hotspot
     library_location = Location(
         "images/scene1.jpg",
-        [Direction.EAST, Direction.SOUTH],  # Can move right and down from here
+        [Direction.EAST, Direction.SOUTH],
         {
-            "bookshelf1": (pygame.Rect(6, 164, 250, 250), bookshelf_action),  # Clickable area for bookshelf
-            "bookshelf2": (pygame.Rect(205, 193, 400, 250), bookshelf_action)  # Another clickable bookshelf area
+            "bookshelf1": (pygame.Rect(6, 164, 250, 250), bookshelf_action),
+            "bookshelf2": (pygame.Rect(205, 193, 400, 250), bookshelf_action)
         }
     )
     
     location2 = Location(
         "images/scene2.jpg",
-        [Direction.WEST, Direction.EAST, Direction.SOUTH],  # Can move left, right, and down
+        [Direction.WEST, Direction.EAST, Direction.SOUTH],
         {
-            "bookshelf": (pygame.Rect(350, 200, 100, 200), bookshelf_action)  # Clickable bookshelf area
+            "bookshelf": (pygame.Rect(350, 200, 100, 200), bookshelf_action)
         }
     )
     
     location3 = Location(
         "images/scene3.jpg",
-        [Direction.WEST, Direction.SOUTH],  # Can move left and down
-        {}  # No hotspots in this location
+        [Direction.WEST, Direction.SOUTH],
+        {}
     )
     
-    # Middle row (0,1), (1,1), (2,1)
     location4 = Location(
         "images/scene4.jpg",
         [Direction.NORTH, Direction.EAST, Direction.SOUTH],
@@ -274,7 +278,6 @@ def main():
         {}
     )
     
-    # Bottom row (0,2), (1,2), (2,2)
     location7 = Location(
         "images/scene7.jpg",
         [Direction.NORTH, Direction.EAST],
@@ -293,18 +296,12 @@ def main():
         {}
     )
     
-    # Add all locations to the game grid
-    # First row (y=0)
     game.add_location((0, 0), library_location)
     game.add_location((1, 0), location2)
     game.add_location((2, 0), location3)
-    
-    # Second row (y=1)
     game.add_location((0, 1), location4)
     game.add_location((1, 1), location5)
     game.add_location((2, 1), location6)
-    
-    # Third row (y=2)
     game.add_location((0, 2), location7)
     game.add_location((1, 2), location8)
     game.add_location((2, 2), location9)
