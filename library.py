@@ -12,7 +12,6 @@ from dataclasses import dataclass
 import threading
 import multiprocessing
 import numpy as np
-
 import os
 import random
 import string
@@ -162,7 +161,7 @@ class Game:
         }
         
         # Grid position (0,0 is top-left)
-        self.current_pos = (0, 0)
+        self.current_pos = (1, 2)
         self.locations: Dict[Tuple[int, int], Location] = {}
 
     def add_location(self, grid_pos: Tuple[int, int], location: Location):
@@ -293,7 +292,7 @@ class Game:
         sys.exit()
 
 def main():
-    game = Game(800, 600)
+    game = Game(1200, 800)
     
     def bookshelf_action():
         game.handle_bookshelf_click()
